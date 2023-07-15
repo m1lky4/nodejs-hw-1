@@ -5,57 +5,42 @@ const { nanoid } = require("nanoid");
 
 const contactsPath = path.join(__dirname, "db", "contacts.json");
 
-
 async function listContacts() {
   const data = JSON.parse(await fs.readFile(contactsPath, "utf-8"));
-
   return data;
 }
 
 async function getContactById(contactId) {
   const contactsArr = await listContacts();
-  const findedObj = contactsArr.filter((obj) => obj.id === contactId);
-
-  return findedObj[0] ? findedObj[0] : null;
+  const foundContact = contactsArr.find((contact) => contact.id === contactId);
+  return foundContact || null;
 }
 
 async function removeContact(contactId) {
   const contactsArr = await listContacts();
-  let deletedContact = null;
-  const newContactArr = [];
-
-  for (const contact of contactsArr) {
-    if (contact.id === contactId) {
-      deletedContact = contact;
-      continue;
-    }
-    newContactArr.push(contact);
+  const deletedContact = contactsArr.find((contact) => contact.id === contactId);
+  if (deletedContact) {
+    const newContactArr = contactsArr.filter((contact) => contact.id !== contactId);
+    await fs.writeFile(contactsPath, JSON.stringify(newContactArr, null, 2));
   }
-
-  deletedContact && fs.writeFile(contactsPath, JSON.stringify(newContactArr, null, 2));
-
-  return deletedContact;
+  return deletedContact || null;
 }
 
 async function addContact(name, email, phone) {
+  const contactsArr = await listContacts();
+  const isAlreadyExist = contactsArr.some((contact) => contact.email === email);
+  if (isAlreadyExist) {
+    return null;
+  }
   const newContact = {
     id: nanoid(),
     name,
     email,
     phone,
   };
-  const contactsArr = await listContacts();
-  const isOlredyExist = Boolean(
-    contactsArr.find((contact) => contact.email === email)
-  );
-
-  if (!isOlredyExist) {
-    contactsArr.push(newContact);
-
-    fs.writeFile(contactsPath, JSON.stringify(contactsArr, null, 2));
-
-    return newContact;
-  }
+  contactsArr.push(newContact);
+  await fs.writeFile(contactsPath, JSON.stringify(contactsArr, null, 2));
+  return newContact;
 }
 
 module.exports = { listContacts, getContactById, removeContact, addContact };
